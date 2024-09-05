@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wyb_assignment/screens/home_screen.dart';
+import 'package:wyb_assignment/screens/stories_screen.dart';
 import 'package:wyb_ds/wyb_ds.dart';
 
 import 'screens/splash_screen.dart';
@@ -17,6 +18,12 @@ final GoRouter router = GoRouter(
       path: GoRouterConstants.homeScreen,
       builder: (BuildContext context, GoRouterState state) {
         return const HomeScreen();
+      },
+    ),
+    GoRoute(
+      path: GoRouterConstants.storiesScreen,
+      builder: (BuildContext context, GoRouterState state) {
+        return const StoriesScreen();
       },
     ),
   ],
