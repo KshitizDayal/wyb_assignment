@@ -7,13 +7,15 @@ class StoryDataModel {
   String? emoji;
   String? description;
   List<String>? storyList;
+  String? postedTime;
 
   StoryDataModel(
       {this.name,
       this.profilePic,
       this.emoji,
       this.description,
-      this.storyList});
+      this.storyList,
+      this.postedTime});
 
   StoryDataModel.fromJson(Map<String, dynamic> json) {
     name = json['name'];
@@ -21,6 +23,7 @@ class StoryDataModel {
     emoji = json['emoji'];
     description = json['description'];
     storyList = json['story_list'].cast<String>();
+    postedTime = json["posted_time"];
   }
 
   Map<String, dynamic> toJson() {
@@ -30,6 +33,7 @@ class StoryDataModel {
     data['emoji'] = emoji;
     data['description'] = description;
     data['story_list'] = storyList;
+    data['posted_time'] = postedTime;
     return data;
   }
 }

@@ -7,9 +7,19 @@ class WybFonts {
     fontWeight: FontWeight.bold,
     color: WybColor.black,
   );
+  static const TextStyle bold14 = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.bold,
+    color: WybColor.black,
+  );
 
   static const TextStyle normal28 = TextStyle(
     fontSize: 28,
+    color: WybColor.black,
+  );
+
+  static const TextStyle normal16 = TextStyle(
+    fontSize: 16,
     color: WybColor.black,
   );
 

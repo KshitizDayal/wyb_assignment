@@ -40,3 +40,13 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
     );
   }
 }
+
+
+//  _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(
+//         storiesdata![currentStoryIndex].storyList![currentMediaIndex]))
+//       ..initialize().then((_) {
+//         setState(() {
+//           _videoPlayerController?.play();
+//           _startAnimation();
+//         });
+//       });
