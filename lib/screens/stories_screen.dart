@@ -1,11 +1,11 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_video_player_plus/cached_video_player_plus.dart';
 import 'package:gradient_borders/gradient_borders.dart';
-import 'package:video_player/video_player.dart';
 import 'package:wyb_assignment/model/story_data_model.dart';
-import 'package:wyb_assignment/screens/json_data.dart';
 import 'package:wyb_ds/wyb_ds.dart';
+
+import 'json_data.dart';
 
 class StoriesScreen extends StatefulWidget {
   const StoriesScreen({super.key});
@@ -20,21 +20,57 @@ class _StoriesScreenState extends State<StoriesScreen>
   int currentStoryIndex = 0;
   int currentMediaIndex = 0;
   AnimationController? _animationController;
-  VideoPlayerController? _videoPlayerController;
-  VideoPlayerController? _nextVideoPlayerController;
+  CachedVideoPlayerPlusController? _videoPlayerController;
+  CachedVideoPlayerPlusController? _nextVideoPlayerController;
+
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     storiesdata = storyFromJson(jsonData);
     _loadStory();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _centerCurrentStory(); // Center the current story when the screen first loads
+    });
+  }
+
+  void _centerCurrentStory() {
+    if (_scrollController.hasClients && storiesdata != null) {
+      // Width of each item (adjust this to match actual item size)
+      double itemWidth = 100.0;
+      // Screen width to center the selected item
+      double screenWidth = MediaQuery.of(context).size.width;
+      // Scroll position to center the current item
+      double scrollPosition =
+          (itemWidth * currentStoryIndex) - (screenWidth / 2 - itemWidth / 2);
+
+      // Ensure the scroll position is within valid bounds
+      scrollPosition = scrollPosition.clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      );
+
+      _scrollController.animateTo(
+        scrollPosition,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant StoriesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _centerCurrentStory(); // Ensure the active story is centered after widget updates
+    });
   }
 
   void _loadStory() {
     _initializeVideoPlayer(
         storiesdata![currentStoryIndex].storyList![currentMediaIndex]);
 
-    // Preload the next video if it exists
     if (currentMediaIndex + 1 <
         storiesdata![currentStoryIndex].storyList!.length) {
       _preloadNextVideo(
@@ -49,16 +85,15 @@ class _StoriesScreenState extends State<StoriesScreen>
         lastVideoController.dispose();
       });
     }
-    _videoPlayerController =
-        VideoPlayerController.networkUrl(Uri.parse(videoUrl))
-          ..initialize().then((_) {
-            setState(() {
-              _videoPlayerController?.play();
-              _startAnimation();
-            });
-          });
+    _videoPlayerController = CachedVideoPlayerPlusController.networkUrl(
+      Uri.parse(videoUrl),
+    )..initialize().then((_) {
+        setState(() {
+          _videoPlayerController?.play();
+          _startAnimation();
+        });
+      });
 
-    // Listen for when the video finishes playing
     _videoPlayerController?.addListener(() {
       if (_videoPlayerController!.value.isInitialized &&
           !_videoPlayerController!.value.isPlaying &&
@@ -72,42 +107,38 @@ class _StoriesScreenState extends State<StoriesScreen>
   void _preloadNextVideo(String videoUrl) {
     _nextVideoPlayerController?.dispose();
     _nextVideoPlayerController =
-        VideoPlayerController.networkUrl(Uri.parse(videoUrl))
+        CachedVideoPlayerPlusController.networkUrl(Uri.parse(videoUrl))
           ..initialize().then((_) {});
   }
 
   void _startAnimation() {
-    _animationController?.dispose(); // Dispose the previous controller
+    _animationController?.dispose();
     _animationController = AnimationController(
       vsync: this,
       duration:
           _videoPlayerController?.value.duration ?? const Duration(seconds: 5),
     )..forward();
 
-    // Add listener to update UI when animation progresses
     _animationController?.addListener(() {
       setState(() {}); // Forces a rebuild to update progress bar
     });
 
     _animationController?.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        _onNextVideo(); // Handle the transition to the next video when animation completes
+        _onNextVideo();
       }
     });
   }
 
   void _onNextVideo() {
-    // If there are more videos in the current story, move to the next video
     if (currentMediaIndex <
         storiesdata![currentStoryIndex].storyList!.length - 1) {
       setState(() {
         currentMediaIndex++;
-
-        // Switch to the preloaded video controller
         if (_nextVideoPlayerController != null &&
             _nextVideoPlayerController!.value.isInitialized) {
           _videoPlayerController = _nextVideoPlayerController;
-          _nextVideoPlayerController = null; // Clear the next controller
+          _nextVideoPlayerController = null;
           _videoPlayerController?.play();
           _startAnimation();
         } else {
@@ -115,7 +146,6 @@ class _StoriesScreenState extends State<StoriesScreen>
               storiesdata![currentStoryIndex].storyList![currentMediaIndex]);
         }
 
-        // Preload the next video if it exists
         if (currentMediaIndex + 1 <
             storiesdata![currentStoryIndex].storyList!.length) {
           _preloadNextVideo(storiesdata![currentStoryIndex]
@@ -123,13 +153,11 @@ class _StoriesScreenState extends State<StoriesScreen>
         }
       });
     } else {
-      // If no more videos in the current story, move to the next story
       _onNextStory();
     }
   }
 
   void _onPreviousVideo() {
-    // If there are more videos in the current story, move to the previous video
     if (currentMediaIndex > 0) {
       setState(() {
         currentMediaIndex--;
@@ -137,7 +165,6 @@ class _StoriesScreenState extends State<StoriesScreen>
             storiesdata![currentStoryIndex].storyList![currentMediaIndex]);
       });
     } else {
-      // If no more videos in the current story, move to the previous story
       _onPreviousStory();
     }
   }
@@ -149,8 +176,10 @@ class _StoriesScreenState extends State<StoriesScreen>
         currentMediaIndex = 0;
       });
       _restartStory();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _centerCurrentStory(); // Center the story after it's updated
+      });
     } else {
-      // All stories completed
       _animationController?.dispose();
       _videoPlayerController?.dispose();
       _nextVideoPlayerController?.dispose();
@@ -159,18 +188,15 @@ class _StoriesScreenState extends State<StoriesScreen>
   }
 
   void _onPreviousStory() {
-    if (currentMediaIndex > 0) {
-      setState(() {
-        currentMediaIndex--;
-      });
-      _restartStory();
-    } else if (currentStoryIndex > 0) {
+    if (currentStoryIndex > 0) {
       setState(() {
         currentStoryIndex--;
-        currentMediaIndex =
-            storiesdata![currentStoryIndex].storyList!.length - 1;
+        currentMediaIndex = 0;
       });
       _restartStory();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _centerCurrentStory(); // Center the story after it's updated
+      });
     }
   }
 
@@ -178,7 +204,6 @@ class _StoriesScreenState extends State<StoriesScreen>
     _initializeVideoPlayer(
         storiesdata![currentStoryIndex].storyList![currentMediaIndex]);
 
-    // Preload the next video if it exists
     if (currentMediaIndex + 1 <
         storiesdata![currentStoryIndex].storyList!.length) {
       _preloadNextVideo(
@@ -188,6 +213,7 @@ class _StoriesScreenState extends State<StoriesScreen>
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _animationController?.dispose();
     _videoPlayerController?.dispose();
     _nextVideoPlayerController?.dispose();
@@ -198,57 +224,44 @@ class _StoriesScreenState extends State<StoriesScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: GestureDetector(
-        onTapDown: (details) {
-          final screenWidth = MediaQuery.of(context).size.width;
-          final screenHeight = MediaQuery.of(context).size.height;
-
-          // Tap on the left side for previous video
-          if (details.globalPosition.dx < screenWidth / 3) {
-            if (details.globalPosition.dy > screenHeight * 0.8) {
-              _onPreviousVideo(); // Tapping lower left for the previous video
-            } else {
-              _onPreviousStory(); // Tapping upper left for the previous story
-            }
+        onHorizontalDragEnd: (details) {
+          if (details.velocity.pixelsPerSecond.dx < 0) {
+            _onNextStory();
+          } else if (details.velocity.pixelsPerSecond.dx > 0) {
+            _onPreviousStory();
           }
-          // Tap on the right side for next video
-          else {
+        },
+        onTapUp: (details) {
+          final screenWidth = MediaQuery.of(context).size.width;
+          final tapPosition = details.globalPosition.dx;
+
+          if (tapPosition < screenWidth / 3) {
+            _onPreviousVideo();
+          } else if (tapPosition > screenWidth * 2 / 3) {
             _onNextVideo();
+          } else {
+            _onNextVideo(); // Tap in the middle to move to the next video
           }
         },
         child: Stack(
           children: [
             _videoPlayerController != null &&
                     _videoPlayerController!.value.isInitialized
-                ? VideoPlayer(_videoPlayerController!)
-                : const Center(
-                    child:
-                        CircularProgressIndicator()), // Show a loading indicator until the video is ready
+                ? CachedVideoPlayerPlus(_videoPlayerController!)
+                : const Center(child: CircularProgressIndicator()),
             SafeArea(
               child: Column(
                 children: [
                   _animationController != null
                       ? _buildProgressBar()
-                      : const SizedBox
-                          .shrink(), // Show progress bar only if animationController is initialized
+                      : const SizedBox.shrink(),
                   _buildStoryHeader(),
-                  // Add profile list at the bottom
                 ],
               ),
             ),
             Align(
               alignment: Alignment.bottomCenter,
               child: _buildProfileList(),
-            ),
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.bottomLeft,
-              child: Container(
-                margin: const EdgeInsets.all(4).copyWith(left: 16),
-                child: Text(
-                  storiesdata![currentStoryIndex].description ?? "",
-                  style: WybFonts.normal14.copyWith(color: WybColor.white),
-                ),
-              ),
             ),
           ],
         ),
@@ -262,7 +275,7 @@ class _StoriesScreenState extends State<StoriesScreen>
         storiesdata![currentStoryIndex].storyList!.length,
         (index) => Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: LinearProgressIndicator(
               value: index < currentMediaIndex
                   ? 1
@@ -270,7 +283,7 @@ class _StoriesScreenState extends State<StoriesScreen>
                       ? _animationController?.value ?? 0
                       : 0,
               valueColor: const AlwaysStoppedAnimation(Colors.white),
-              backgroundColor: Colors.white38,
+              backgroundColor: WybColor.white.withOpacity(0.5),
             ),
           ),
         ),
@@ -311,11 +324,8 @@ class _StoriesScreenState extends State<StoriesScreen>
             ],
           ),
           InkWell(
-            onTap: () => GoRouter.of(context).pop(),
-            child: const Icon(
-              Icons.clear,
-              color: WybColor.white,
-            ),
+            onTap: () => Navigator.pop(context),
+            child: const Icon(Icons.clear, color: WybColor.white),
           ),
         ],
       ),
@@ -327,6 +337,7 @@ class _StoriesScreenState extends State<StoriesScreen>
       margin: const EdgeInsets.only(bottom: 28),
       height: 100,
       child: ListView.builder(
+        controller: _scrollController,
         scrollDirection: Axis.horizontal,
         itemCount: storiesdata!.length,
         itemBuilder: (context, index) {
@@ -339,27 +350,45 @@ class _StoriesScreenState extends State<StoriesScreen>
                 currentMediaIndex = 0;
                 _restartStory();
               });
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _centerCurrentStory();
+              });
             },
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: isActive
-                    ? const GradientBoxBorder(
-                        width: 3,
-                        gradient: LinearGradient(colors: [
-                          WybColor.secondary,
-                          WybColor.tertiary,
-                          WybColor.quaternary,
-                        ]),
-                      )
-                    : Border.all(width: 0),
-              ),
-              child: CircleAvatar(
-                radius: isActive ? 50 : 30,
-                backgroundImage:
-                    CachedNetworkImageProvider(storiesdata![index].profilePic!),
-              ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: isActive
+                        ? const GradientBoxBorder(
+                            width: 3,
+                            gradient: LinearGradient(colors: [
+                              WybColor.secondary,
+                              WybColor.tertiary,
+                              WybColor.quaternary,
+                            ]),
+                          )
+                        : Border.all(width: 0),
+                  ),
+                  child: CircleAvatar(
+                    radius: isActive ? 50 : 30,
+                    backgroundImage: CachedNetworkImageProvider(
+                        storiesdata![index].profilePic!),
+                  ),
+                ),
+                Positioned(
+                  right: 8,
+                  top: 0,
+                  child: isActive
+                      ? Text(
+                          storiesdata![index].emoji ?? "",
+                          style: const TextStyle(fontSize: 24),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
             ),
           );
         },
