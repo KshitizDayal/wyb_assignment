@@ -31,21 +31,19 @@ class _StoriesScreenState extends State<StoriesScreen>
     storiesdata = storyFromJson(jsonData);
     _loadStory();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _centerCurrentStory(); // Center the current story when the screen first loads
+      _centerCurrentStory();
     });
   }
 
   void _centerCurrentStory() {
     if (_scrollController.hasClients && storiesdata != null) {
-      // Width of each item (adjust this to match actual item size)
       double itemWidth = 100.0;
-      // Screen width to center the selected item
+
       double screenWidth = MediaQuery.of(context).size.width;
-      // Scroll position to center the current item
+
       double scrollPosition =
           (itemWidth * currentStoryIndex) - (screenWidth / 2 - itemWidth / 2);
 
-      // Ensure the scroll position is within valid bounds
       scrollPosition = scrollPosition.clamp(
         0.0,
         _scrollController.position.maxScrollExtent,
@@ -63,7 +61,7 @@ class _StoriesScreenState extends State<StoriesScreen>
   void didUpdateWidget(covariant StoriesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _centerCurrentStory(); // Ensure the active story is centered after widget updates
+      _centerCurrentStory();
     });
   }
 
@@ -120,7 +118,7 @@ class _StoriesScreenState extends State<StoriesScreen>
     )..forward();
 
     _animationController?.addListener(() {
-      setState(() {}); // Forces a rebuild to update progress bar
+      setState(() {});
     });
 
     _animationController?.addStatusListener((status) {
@@ -177,7 +175,7 @@ class _StoriesScreenState extends State<StoriesScreen>
       });
       _restartStory();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _centerCurrentStory(); // Center the story after it's updated
+        _centerCurrentStory();
       });
     } else {
       _animationController?.dispose();
@@ -195,7 +193,7 @@ class _StoriesScreenState extends State<StoriesScreen>
       });
       _restartStory();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _centerCurrentStory(); // Center the story after it's updated
+        _centerCurrentStory();
       });
     }
   }
@@ -240,7 +238,7 @@ class _StoriesScreenState extends State<StoriesScreen>
           } else if (tapPosition > screenWidth * 2 / 3) {
             _onNextVideo();
           } else {
-            _onNextVideo(); // Tap in the middle to move to the next video
+            _onNextVideo();
           }
         },
         child: Stack(
